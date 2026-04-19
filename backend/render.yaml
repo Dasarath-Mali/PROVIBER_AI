@@ -1,0 +1,41 @@
+# render.yaml — Render Blueprint for ProViber Backend
+#
+# Deploy instructions:
+#  1. Push this repo to GitHub.
+#  2. Go to https://dashboard.render.com → New → Blueprint.
+#  3. Connect your repo. Render will detect this file automatically.
+#  4. Add the GEMINI_API_KEY environment variable in the Render dashboard.
+#
+# Docs: https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: proviber-backend
+    runtime: go
+
+    # Root directory of the Go module (relative to repo root)
+    rootDir: backend
+
+    # Build command — compiles the binary
+    buildCommand: go build -o proviber-server ./...
+
+    # Start command — runs the compiled binary
+    startCommand: ./proviber-server
+
+    # Render's free tier — no cost but instances spin down after 15 min of inactivity.
+    # Upgrade to "starter" ($7/mo) for always-on behavior.
+    plan: free
+
+    # Health check so Render knows the service is up
+    healthCheckPath: /health
+
+    # Environment variables
+    # GEMINI_API_KEY must be set in the Render dashboard (not here, for security).
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: GEMINI_API_KEY
+        sync: false   # Set manually in the Render dashboard → "Secret File" or env var
+
+    # Auto-deploy on every push to main
+    autoDeploy: true

@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────
+# ProViber — .gitignore
+# ─────────────────────────────────────────────────────────────
+
+# ── Environment & Secrets ─────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.key
+backend/.env
+# ── Go ────────────────────────────────────────────────────────
+# Compiled binaries
+backend/proviber-server
+backend/*.exe
+backend/*.out
+backend/*.test
+
+# Go build cache & module download cache
+/tmp/
+go/pkg/
+vendor/
+
+# Test coverage output
+*.coverprofile
+coverage.out
+
+# ── Workspace (AI-generated code lives here at runtime) ───────
+backend/workspace/
+/tmp/proviber-workspaces/
+
+# ── OS & Editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Node (if you ever add a build step to the frontend) ───────
+node_modules/
+dist/
+.cache/
+
+# ── Vercel ────────────────────────────────────────────────────
+.vercel/
+
+# ── Render ────────────────────────────────────────────────────
+.render/

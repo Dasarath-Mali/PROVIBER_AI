@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProViber — Agentic Vibe Coder</title>
+
+  <!-- 98.css for Windows 98 UI components -->
+  <link rel="stylesheet" href="https://unpkg.com/98.css" />
+
+  <!-- Google Font: VT323 for that authentic CRT terminal feel -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════
+       OUTER CRT MONITOR SHELL
+  ═══════════════════════════════════════════════ -->
+  <div class="crt-outer">
+
+    <!-- Monitor bezel top bar with logo -->
+    <div class="monitor-brand-bar">
+      <span class="brand-logo">⬛ ProViber™</span>
+      <span class="brand-model">Model PV-2000X · 17" CRT</span>
+    </div>
+
+    <!-- The actual CRT screen area -->
+    <div class="crt-screen-bezel">
+      <div class="crt-screen">
+
+        <!-- Scanline + vignette overlays -->
+        <div class="scanlines"></div>
+        <div class="vignette"></div>
+
+        <!-- ─── WINDOWS 98 DESKTOP INSIDE THE CRT ─── -->
+        <div class="win98-desktop">
+
+          <!-- ══ TASKBAR ══ -->
+          <div class="win98-taskbar">
+            <button class="start-btn" id="startBtn" onclick="toggleStartMenu()">
+              <img src="https://i.imgur.com/Nqf7HxN.png" width="16" height="16" alt="win" style="image-rendering:pixelated;vertical-align:middle;margin-right:4px;"/>
+              <b>Start</b>
+            </button>
+            <div class="taskbar-divider"></div>
+
+            <!-- Active windows in taskbar -->
+            <button class="taskbar-btn active-task" id="mainTaskBtn">📟 ProViber — Vibe Coder</button>
+
+            <!-- System tray -->
+            <div class="system-tray">
+              <span class="tray-icon">🔊</span>
+              <span class="tray-icon">🌐</span>
+              <span class="tray-clock" id="taskbarClock">00:00</span>
+            </div>
+          </div>
+
+          <!-- ══ START MENU ══ -->
+          <div class="start-menu" id="startMenu" style="display:none;">
+            <div class="start-menu-header">
+              <span class="start-menu-user">👤 Vibe Coder</span>
+            </div>
+            <div class="start-menu-items">
+              <div class="start-item" onclick="openWindow('mainWindow'); toggleStartMenu()">📟 ProViber IDE</div>
+              <div class="start-item" onclick="openWindow('recentWindow'); toggleStartMenu()">🕓 Recent Chats</div>
+              <div class="start-item" onclick="openWindow('settingsWindow'); toggleStartMenu()">⚙️ Settings</div>
+              <div class="start-separator"></div>
+              <div class="start-item" onclick="openWindow('upgradeWindow'); toggleStartMenu()">⭐ Upgrade Plan</div>
+              <div class="start-separator"></div>
+              <div class="start-item" onclick="showShutdown()">🔌 Shut Down...</div>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════
+               MAIN PROVIBER WINDOW
+          ══════════════════════════════════════════ -->
+          <div class="window win98-window" id="mainWindow" style="left:30px; top:20px; width:calc(100% - 60px); height:calc(100% - 80px);">
+            <div class="title-bar" onmousedown="startDrag(event, 'mainWindow')">
+              <div class="title-bar-text">📟 ProViber — Agentic Vibe Coder v1.0</div>
+              <div class="title-bar-controls">
+                <button aria-label="Minimize" onclick="minimizeWindow('mainWindow')"></button>
+                <button aria-label="Maximize" onclick="maximizeWindow('mainWindow')"></button>
+                <button aria-label="Close" onclick="closeWindow('mainWindow')"></button>
+              </div>
+            </div>
+
+            <!-- Menu bar -->
+            <div class="menu-bar-row">
+              <div class="menu-bar">
+                <div class="menu-item" tabindex="0">File</div>
+                <div class="menu-item" tabindex="0">Edit</div>
+                <div class="menu-item" tabindex="0">View</div>
+                <div class="menu-item active-menu" tabindex="0">Vibe ▾
+                  <div class="dropdown-menu">
+                    <div class="dropdown-item" onclick="newSession()">🆕 New Session</div>
+                    <div class="dropdown-item" onclick="clearOutput()">🗑️ Clear Output</div>
+                    <div class="dropdown-item" onclick="exportCode()">💾 Export Code</div>
+                  </div>
+                </div>
+                <div class="menu-item" tabindex="0">Help</div>
+              </div>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="win98-toolbar">
+              <button class="toolbar-btn" onclick="newSession()" title="New Session">
+                🌳 <span>Tree</span>
+              </button>
+              <div class="toolbar-separator"></div>
+              <button class="toolbar-btn" onclick="openWindow('recentWindow')" title="Recent Chats">
+                🕓 <span>Recents</span>
+              </button>
+              <button class="toolbar-btn" onclick="openWindow('settingsWindow')" title="Settings">
+                ⚙️ <span>Settings</span>
+              </button>
+              <button class="toolbar-btn upgrade-btn" onclick="openWindow('upgradeWindow')" title="Upgrade">
+                ⭐ <span>Upgrade</span>
+              </button>
+              <div class="toolbar-separator"></div>
+              <span class="toolbar-status-label">Status:</span>
+              <span class="status-light" id="statusLight">🔴</span>
+              <span class="status-text" id="statusText">Disconnected</span>
+            </div>
+
+            <!-- Main content: split pane -->
+            <div class="main-content-area">
+
+              <!-- LEFT: Prompt & Controls -->
+              <div class="left-panel">
+                <fieldset class="panel-fieldset">
+                  <legend>🎯 Vibe Prompt</legend>
+                  <textarea
+                    id="vibeInput"
+                    class="vibe-textarea"
+                    placeholder="Describe what you want to build...&#10;&#10;e.g. 'Write a Go HTTP server that returns the current time as JSON'"
+                    rows="8"
+                  ></textarea>
+                  <div class="prompt-actions">
+                    <button class="neon-btn" id="sendBtn" onclick="sendVibe()">▶ VIBE IT</button>
+                    <button class="btn-flat" onclick="clearOutput()">Clear</button>
+                    <button class="btn-flat" onclick="stopLoop()">⏹ Stop</button>
+                  </div>
+                </fieldset>
+
+                <!-- Agent status panel -->
+                <fieldset class="panel-fieldset agent-status-panel">
+                  <legend>🤖 Agent Status</legend>
+                  <div class="agent-loop-display" id="agentLoopDisplay">
+                    <div class="loop-row">
+                      <span class="loop-label">Attempt:</span>
+                      <span class="loop-value" id="attemptCount">—</span>
+                    </div>
+                    <div class="loop-row">
+                      <span class="loop-label">Phase:</span>
+                      <span class="loop-value" id="currentPhase">Idle</span>
+                    </div>
+                    <div class="loop-row">
+                      <span class="loop-label">Errors:</span>
+                      <span class="loop-value error-val" id="errorCount">0</span>
+                    </div>
+                    <div class="loop-row">
+                      <span class="loop-label">Tokens:</span>
+                      <span class="loop-value" id="tokenCount">0</span>
+                    </div>
+                  </div>
+
+                  <!-- Mini loop visualizer -->
+                  <div class="loop-viz" id="loopViz">
+                    <div class="loop-node" id="node-prompt">PROMPT</div>
+                    <div class="loop-arrow">→</div>
+                    <div class="loop-node" id="node-gemini">GEMINI</div>
+                    <div class="loop-arrow">→</div>
+                    <div class="loop-node" id="node-exec">EXEC</div>
+                    <div class="loop-arrow">→</div>
+                    <div class="loop-node" id="node-fix">FIX</div>
+                  </div>
+                </fieldset>
+
+                <!-- File tree panel -->
+                <fieldset class="panel-fieldset file-tree-panel">
+                  <legend>📁 Workspace Files</legend>
+                  <div class="file-tree" id="fileTree">
+                    <div class="tree-item tree-root">📂 workspace/</div>
+                    <div class="tree-empty">No files yet</div>
+                  </div>
+                </fieldset>
+              </div>
+
+              <!-- RIGHT: Terminal output -->
+              <div class="right-panel">
+                <fieldset class="panel-fieldset terminal-fieldset">
+                  <legend>💻 Terminal Output</legend>
+                  <div class="terminal" id="terminal">
+                    <div class="terminal-line welcome-line">
+                      ██████╗ ██████╗  ██████╗ ██╗   ██╗██╗██████╗ ███████╗██████╗ 
+                    </div>
+                    <div class="terminal-line welcome-line">
+                      ██╔══██╗██╔══██╗██╔═══██╗██║   ██║██║██╔══██╗██╔════╝██╔══██╗
+                    </div>
+                    <div class="terminal-line welcome-line">
+                      ██████╔╝██████╔╝██║   ██║██║   ██║██║██████╔╝█████╗  ██████╔╝
+                    </div>
+                    <div class="terminal-line welcome-line">
+                      ██╔═══╝ ██╔══██╗██║   ██║╚██╗ ██╔╝██║██╔══██╗██╔══╝  ██╔══██╗
+                    </div>
+                    <div class="terminal-line welcome-line">
+                      ██║     ██║  ██║╚██████╔╝ ╚████╔╝ ██║██████╔╝███████╗██║  ██║
+                    </div>
+                    <div class="terminal-line welcome-line">
+                      ╚═╝     ╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝
+                    </div>
+                    <div class="terminal-line dim-line">─────────────────────────────────────────────────────</div>
+                    <div class="terminal-line info-line">  Agentic Vibe Coder v1.0 · Powered by Gemini AI</div>
+                    <div class="terminal-line dim-line">─────────────────────────────────────────────────────</div>
+                    <div class="terminal-line">&gt; System ready. Connecting to backend...</div>
+                    <div class="terminal-line">&gt; Type your vibe in the prompt box and hit [VIBE IT]</div>
+                    <div class="terminal-line blink-line">&gt; <span class="cursor">█</span></div>
+                  </div>
+                </fieldset>
+
+                <!-- Generated code panel -->
+                <fieldset class="panel-fieldset code-fieldset">
+                  <legend>📝 Generated Code <span id="codeFilename" class="code-filename"></span></legend>
+                  <div class="code-toolbar">
+                    <button class="btn-flat" onclick="copyCode()">📋 Copy</button>
+                    <button class="btn-flat" onclick="exportCode()">💾 Save</button>
+                    <span class="code-lang-badge" id="codeLangBadge">GO</span>
+                  </div>
+                  <pre class="code-output" id="codeOutput"><code id="codeBlock">// Generated code will appear here after vibing...</code></pre>
+                </fieldset>
+              </div>
+            </div>
+
+            <!-- Status bar -->
+            <div class="win98-statusbar">
+              <div class="statusbar-item" id="sb-connection">🔴 Offline</div>
+              <div class="statusbar-sep">|</div>
+              <div class="statusbar-item" id="sb-rate">Rate: OK</div>
+              <div class="statusbar-sep">|</div>
+              <div class="statusbar-item" id="sb-session">Session: None</div>
+              <div class="statusbar-sep">|</div>
+              <div class="statusbar-item" id="sb-time">--:--:--</div>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════
+               RECENT CHATS WINDOW
+          ══════════════════════════════════════════ -->
+          <div class="window win98-window secondary-window" id="recentWindow" style="display:none; left:80px; top:60px; width:400px; height:350px;">
+            <div class="title-bar" onmousedown="startDrag(event, 'recentWindow')">
+              <div class="title-bar-text">🕓 Recent Chats</div>
+              <div class="title-bar-controls">
+                <button aria-label="Close" onclick="closeWindow('recentWindow')"></button>
+              </div>
+            </div>
+            <div class="window-body" style="padding:8px; height:calc(100% - 30px); overflow:auto;">
+              <div class="recent-list" id="recentList">
+                <div class="recent-item">
+                  <div class="recent-title">🗂 HTTP server with JSON endpoints</div>
+                  <div class="recent-meta">2 days ago · 3 iterations · ✅ Success</div>
+                </div>
+                <div class="recent-item">
+                  <div class="recent-title">🗂 CLI tool to parse CSV files</div>
+                  <div class="recent-meta">5 days ago · 5 iterations · ✅ Success</div>
+                </div>
+                <div class="recent-item">
+                  <div class="recent-title">🗂 WebSocket chat app in Go</div>
+                  <div class="recent-meta">1 week ago · 7 iterations · ✅ Success</div>
+                </div>
+                <div class="recent-item">
+                  <div class="recent-title">🗂 Fibonacci calculator with memoization</div>
+                  <div class="recent-meta">2 weeks ago · 1 iteration · ✅ Success</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <button onclick="closeWindow('recentWindow')" style="width:100%;">Close</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════
+               SETTINGS WINDOW
+          ══════════════════════════════════════════ -->
+          <div class="window win98-window secondary-window" id="settingsWindow" style="display:none; left:100px; top:40px; width:450px; height:400px;">
+            <div class="title-bar" onmousedown="startDrag(event, 'settingsWindow')">
+              <div class="title-bar-text">⚙️ ProViber Settings</div>
+              <div class="title-bar-controls">
+                <button aria-label="Close" onclick="closeWindow('settingsWindow')"></button>
+              </div>
+            </div>
+            <div class="window-body" style="padding:12px;">
+              <div class="field-row-stacked">
+                <label>Backend WebSocket URL</label>
+                <input type="text" id="settingWsUrl" value="ws://localhost:8080/ws" style="width:100%;"/>
+              </div>
+              <div class="field-row-stacked" style="margin-top:10px;">
+                <label>Max Retry Attempts</label>
+                <input type="number" id="settingMaxRetry" value="5" min="1" max="20"/>
+              </div>
+              <div class="field-row-stacked" style="margin-top:10px;">
+                <label>Terminal Font Size</label>
+                <select id="settingFontSize">
+                  <option value="12px">12px</option>
+                  <option value="13px" selected>13px</option>
+                  <option value="14px">14px</option>
+                  <option value="16px">16px</option>
+                </select>
+              </div>
+              <div class="field-row" style="margin-top:12px;">
+                <input type="checkbox" id="settingCrtEffect" checked/>
+                <label for="settingCrtEffect">Enable CRT scanline effect</label>
+              </div>
+              <div class="field-row" style="margin-top:6px;">
+                <input type="checkbox" id="settingSound"/>
+                <label for="settingSound">Enable retro sound effects</label>
+              </div>
+              <div class="field-row" style="margin-top:6px;">
+                <input type="checkbox" id="settingAutoReconnect" checked/>
+                <label for="settingAutoReconnect">Auto-reconnect WebSocket</label>
+              </div>
+              <div style="margin-top:16px; display:flex; gap:8px;">
+                <button onclick="saveSettings()">Save</button>
+                <button onclick="closeWindow('settingsWindow')">Cancel</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ══════════════════════════════════════════
+               UPGRADE WINDOW
+          ══════════════════════════════════════════ -->
+          <div class="window win98-window secondary-window upgrade-window" id="upgradeWindow" style="display:none; left:120px; top:50px; width:420px; height:380px;">
+            <div class="title-bar" onmousedown="startDrag(event, 'upgradeWindow')">
+              <div class="title-bar-text">⭐ Upgrade ProViber Plan</div>
+              <div class="title-bar-controls">
+                <button aria-label="Close" onclick="closeWindow('upgradeWindow')"></button>
+              </div>
+            </div>
+            <div class="window-body upgrade-body">
+              <div class="upgrade-plan current-plan">
+                <div class="plan-name">🆓 FREE PLAN</div>
+                <div class="plan-desc">Current Plan</div>
+                <ul class="plan-features">
+                  <li>✅ 5 requests / minute</li>
+                  <li>✅ 5 self-fix iterations</li>
+                  <li>✅ Go code generation</li>
+                  <li>❌ Priority Gemini queue</li>
+                  <li>❌ Code history storage</li>
+                </ul>
+                <button disabled>Current Plan</button>
+              </div>
+              <div class="upgrade-plan pro-plan">
+                <div class="plan-name">⭐ PRO PLAN</div>
+                <div class="plan-desc">$9.99 / month</div>
+                <ul class="plan-features">
+                  <li>✅ Unlimited requests</li>
+                  <li>✅ 20 self-fix iterations</li>
+                  <li>✅ Multi-language support</li>
+                  <li>✅ Priority Gemini queue</li>
+                  <li>✅ 30-day code history</li>
+                </ul>
+                <button class="upgrade-cta">Upgrade Now →</button>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- end win98-desktop -->
+      </div><!-- end crt-screen -->
+    </div><!-- end crt-screen-bezel -->
+
+    <!-- Monitor base / stand -->
+    <div class="monitor-neck"></div>
+    <div class="monitor-stand"></div>
+    <div class="monitor-base"></div>
+
+    <!-- Monitor bottom label -->
+    <div class="monitor-controls-row">
+      <div class="monitor-btn-group">
+        <button class="monitor-hw-btn" onclick="togglePower()" id="powerBtn" title="Power">⏻</button>
+        <button class="monitor-hw-btn" onclick="toggleBrightness()" title="Brightness">☀</button>
+        <button class="monitor-hw-btn" title="Contrast">◑</button>
+      </div>
+      <div class="monitor-power-led" id="powerLed"></div>
+    </div>
+
+  </div><!-- end crt-outer -->
+
+  <script src="script.js"></script>
+</body>
+</html>

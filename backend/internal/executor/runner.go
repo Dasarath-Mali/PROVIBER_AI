@@ -1,7 +1,7 @@
 // internal/executor/runner.go — Code Executor
 //
 // Manages a temporary workspace directory per session, writes AI-generated
-// Go source files, and executes them in a sandboxed subprocess.
+// source files, and executes them in a sandboxed subprocess.
 //
 // Security note:
 //   Running arbitrary AI-generated code is inherently risky.
@@ -61,7 +61,7 @@ func ensureWorkspace(sessionID string) (string, error) {
 }
 
 // WriteToWorkspace writes code to workspace/<sessionID>/<filename>.
-// It also writes a go.mod file if none exists (so the code is compilable).
+// If it's a Go file, it also writes a go.mod file.
 func WriteToWorkspace(sessionID, filename, code string) error {
 	dir, err := ensureWorkspace(sessionID)
 	if err != nil {
@@ -70,8 +70,12 @@ func WriteToWorkspace(sessionID, filename, code string) error {
 
 	// Sanitize filename
 	filename = filepath.Base(filename)
-	if !strings.HasSuffix(filename, ".go") {
-		filename += ".go"
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	// If the AI somehow didn't give it an extension, default to .txt
+	if ext == "" {
+		filename += ".txt"
+		ext = ".txt"
 	}
 
 	filePath := filepath.Join(dir, filename)
@@ -79,12 +83,14 @@ func WriteToWorkspace(sessionID, filename, code string) error {
 		return fmt.Errorf("write %s: %w", filePath, err)
 	}
 
-	// Ensure a go.mod exists so `go run` works without GOPATH shenanigans
-	goModPath := filepath.Join(dir, "go.mod")
-	if _, err := os.Stat(goModPath); os.IsNotExist(err) {
-		goMod := "module proviber-workspace\n\ngo 1.21\n"
-		if writeErr := os.WriteFile(goModPath, []byte(goMod), 0o644); writeErr != nil {
-			return fmt.Errorf("write go.mod: %w", writeErr)
+	// Only create go.mod if we are dealing with Go code
+	if ext == ".go" {
+		goModPath := filepath.Join(dir, "go.mod")
+		if _, err := os.Stat(goModPath); os.IsNotExist(err) {
+			goMod := "module proviber-workspace\n\ngo 1.21\n"
+			if writeErr := os.WriteFile(goModPath, []byte(goMod), 0o644); writeErr != nil {
+				return fmt.Errorf("write go.mod: %w", writeErr)
+			}
 		}
 	}
 
@@ -102,7 +108,7 @@ func ReadWorkspaceFile(sessionID, filename string) (string, error) {
 	return string(content), nil
 }
 
-// ListWorkspaceFiles returns all .go files in the session workspace.
+// ListWorkspaceFiles returns all supported source files in the session workspace.
 func ListWorkspaceFiles(sessionID string) ([]string, error) {
 	dir := workspacePath(sessionID)
 	entries, err := os.ReadDir(dir)
@@ -115,7 +121,12 @@ func ListWorkspaceFiles(sessionID string) ([]string, error) {
 
 	var files []string
 	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".go") {
+		if e.IsDir() || e.Name() == "go.mod" {
+			continue // Skip directories and the hidden go.mod file
+		}
+
+		ext := strings.ToLower(filepath.Ext(e.Name()))
+		if ext == ".go" || ext == ".py" || ext == ".js" || ext == ".txt" {
 			files = append(files, e.Name())
 		}
 	}
@@ -123,25 +134,22 @@ func ListWorkspaceFiles(sessionID string) ([]string, error) {
 }
 
 // CleanWorkspace removes a session's workspace directory.
-// Call this after the session ends to reclaim disk space.
 func CleanWorkspace(sessionID string) error {
 	dir := workspacePath(sessionID)
 	return os.RemoveAll(dir)
 }
 
 // ─────────────────────────────────────────────────────────────
-// CODE EXECUTION
+// CODE EXECUTION (POLYGLOT)
 // ─────────────────────────────────────────────────────────────
 
-// RunGoCode compiles and runs the Go file at workspace/<sessionID>/<filename>.
+// RunCode runs the file at workspace/<sessionID>/<filename> based on its extension.
 //
 // Returns:
 //   - stdout: program's standard output
-//   - stderr: compiler errors or runtime panics
+//   - stderr: compiler/interpreter errors or runtime panics
 //   - err:    non-nil if the process exited with a non-zero code
-//
-// The subprocess is killed after executionTimeout to prevent hangs.
-func RunGoCode(sessionID, filename string) (stdout, stderr string, err error) {
+func RunCode(sessionID, filename string) (stdout, stderr string, err error) {
 	dir := workspacePath(sessionID)
 	filename = filepath.Base(filename)
 	filePath := filepath.Join(dir, filename)
@@ -151,30 +159,46 @@ func RunGoCode(sessionID, filename string) (stdout, stderr string, err error) {
 		return "", "", fmt.Errorf("file not found: %s", filePath)
 	}
 
-	// Use a context with timeout to kill runaway processes
+	ext := strings.ToLower(filepath.Ext(filename))
 	ctx, cancel := context.WithTimeout(context.Background(), executionTimeout)
 	defer cancel()
 
-	// `go run <file>` — compiles and runs in one step.
-	// We run in the workspace dir so relative imports/files work.
-	cmd := exec.CommandContext(ctx, "go", "run", filename) //nolint:gosec
+	var cmd *exec.Cmd
+
+	// Choose the correct runner based on file extension
+	switch ext {
+	case ".go":
+		cmd = exec.CommandContext(ctx, "go", "run", filename)
+		cmd.Env = []string{
+			"HOME=/tmp",
+			"PATH=/usr/local/go/bin:/usr/bin:/bin",
+			"GOPATH=/tmp/gopath",
+			"GOCACHE=/tmp/gocache",
+			"GOMODCACHE=/tmp/gomodcache",
+			"GOTMPDIR=/tmp",
+		}
+	case ".py":
+		cmd = exec.CommandContext(ctx, "python3", filename)
+		cmd.Env = []string{
+			"HOME=/tmp",
+			"PATH=/usr/bin:/bin:/usr/local/bin",
+		}
+	case ".js":
+		cmd = exec.CommandContext(ctx, "node", filename)
+		cmd.Env = []string{
+			"HOME=/tmp",
+			"PATH=/usr/bin:/bin:/usr/local/bin",
+		}
+	default:
+		return "", "", fmt.Errorf("unsupported language extension: %s", ext)
+	}
+
 	cmd.Dir = dir
 
 	// Capture stdout and stderr separately
 	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
-
-	// Set a restricted environment: only pass through PATH and GOPATH.
-	// This prevents leaking host env vars into the subprocess.
-	cmd.Env = []string{
-		"HOME=/tmp",
-		"PATH=/usr/local/go/bin:/usr/bin:/bin",
-		"GOPATH=/tmp/gopath",
-		"GOCACHE=/tmp/gocache",
-		"GOMODCACHE=/tmp/gomodcache",
-		"GOTMPDIR=/tmp",
-	}
 
 	runErr := cmd.Run()
 
@@ -197,39 +221,8 @@ func RunGoCode(sessionID, filename string) (stdout, stderr string, err error) {
 	}
 
 	if runErr != nil {
-		// Exit error — stderr will contain the reason (compile error or panic)
 		return stdoutStr, stderrStr, runErr
 	}
 
 	return stdoutStr, stderrStr, nil
-}
-
-// ─────────────────────────────────────────────────────────────
-// BUILD-ONLY (compile check without running)
-// ─────────────────────────────────────────────────────────────
-
-// BuildGoCode runs `go build` without executing. Useful for large programs
-// where running might have side effects.
-func BuildGoCode(sessionID, filename string) (stderr string, err error) {
-	dir := workspacePath(sessionID)
-	filename = filepath.Base(filename)
-
-	ctx, cancel := context.WithTimeout(context.Background(), executionTimeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", "/dev/null", filename) //nolint:gosec
-	cmd.Dir = dir
-	cmd.Env = []string{
-		"HOME=/tmp",
-		"PATH=/usr/local/go/bin:/usr/bin:/bin",
-		"GOPATH=/tmp/gopath",
-		"GOCACHE=/tmp/gocache",
-		"GOMODCACHE=/tmp/gomodcache",
-	}
-
-	var stderrBuf bytes.Buffer
-	cmd.Stderr = &stderrBuf
-
-	runErr := cmd.Run()
-	return strings.TrimSpace(stderrBuf.String()), runErr
 }

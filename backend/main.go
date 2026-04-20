@@ -21,7 +21,7 @@ import (
 
 const (
 	defaultPort    = "8080"
-	allowedOrigin  = "https://YOUR_PROVIBER_FRONTEND_VERCEL_APP" // Replace before deploy
+	allowedOrigin  = "https://proviber-ai.vercel.app" // Replace before deploy
 	maxFixAttempts = 5
 )
 

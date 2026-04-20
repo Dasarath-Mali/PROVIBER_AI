@@ -16,7 +16,7 @@
  * Replace YOUR_RENDER_URL_HERE with your actual Render service URL
  * e.g. "proviber-backend.onrender.com"
  */
-const RENDER_BACKEND_HOST = "YOUR_RENDER_URL_HERE"; // ← paste your Render URL here
+const RENDER_BACKEND_HOST = "https://proviber-backend.onrender.com"; // ← paste your Render URL here
 
 const WS_URL = (function () {
   const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1";
